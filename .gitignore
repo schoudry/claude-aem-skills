@@ -1,1 +1,13 @@
+.vlt
+.zip
+.mp4
+*.mp4
+*.webm
+*.zip
+*.pdf
+*.avi
+*.camrec
+*.cpvc
+*.crt
+*.key
 node_modules

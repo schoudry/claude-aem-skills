@@ -38,11 +38,9 @@ async function updateAssetMetadata(assetFolderPath, imageFile, imageSourcePath) 
     const fileSize = fileStat.size;
     const lastModified = new Date().toISOString();
     const newUuid = randomUUID();
-    
-    // Read the .content.xml file
+
     let xmlContent = await readFile(contentXmlPath, 'utf-8');
     
-    // Update all metadata fields
     xmlContent = xmlContent.replace(/jcr:uuid="[^"]*"/, `jcr:uuid="${newUuid}"`);
     xmlContent = xmlContent.replace(/jcr:lastModified="{Date}[^"]*"/, `jcr:lastModified="{Date}${lastModified}"`);
     xmlContent = xmlContent.replace(/dam:Fileformat="[^"]*"/, `dam:Fileformat="${fileExt.toUpperCase()}"`);
@@ -50,7 +48,6 @@ async function updateAssetMetadata(assetFolderPath, imageFile, imageSourcePath) 
     xmlContent = xmlContent.replace(/dam:size="{Long}[^"]*"/, `dam:size="{Long}${fileSize}"`);
     xmlContent = xmlContent.replace(/dc:format="[^"]*"/, `dc:format="${mimeType}"`);
     
-    // Write the updated content back
     await writeFile(contentXmlPath, xmlContent, 'utf-8');
 }
 
@@ -90,13 +87,11 @@ async function renameDamFolder(packageFolderPath, folderName) {
 async function updateDamFolderTitle(packageFolderPath, folderName) {
     const contentXmlPath = path.join(packageFolderPath, 'jcr_root', 'content', 'dam', folderName, '.content.xml');
     
-    // Read the .content.xml file
     let xmlContent = await readFile(contentXmlPath, 'utf-8');
     
     // Replace jcr:title="My Site" with jcr:title="{folderName}"
     xmlContent = xmlContent.replace(/jcr:title="My Site"/, `jcr:title="${folderName}"`);
     
-    // Write the updated content back
     await writeFile(contentXmlPath, xmlContent, 'utf-8');
     
     return packageFolderPath;
@@ -105,7 +100,6 @@ async function updateDamFolderTitle(packageFolderPath, folderName) {
 async function updateManifest(packageFolderPath, folderName) {
     const manifestPath = path.join(packageFolderPath, 'META-INF', 'MANIFEST.MF');
     
-    // Read the MANIFEST.MF file
     let manifestContent = await readFile(manifestPath, 'utf-8');
     
     // Update Content-Package-Id: my_packages:my-site-assets -> my_packages:{folderName}
@@ -120,7 +114,6 @@ async function updateManifest(packageFolderPath, folderName) {
         `Content-Package-Roots: /content/dam/${folderName}`
     );
     
-    // Write the updated content back
     await writeFile(manifestPath, manifestContent, 'utf-8');
     
     return packageFolderPath;
@@ -129,7 +122,6 @@ async function updateManifest(packageFolderPath, folderName) {
 async function updateFilterXml(packageFolderPath, folderName) {
     const filterXmlPath = path.join(packageFolderPath, 'META-INF', 'vault', 'filter.xml');
     
-    // Read the filter.xml file
     let filterContent = await readFile(filterXmlPath, 'utf-8');
     
     // Update filter root: /content/dam/my-site -> /content/dam/{folderName}
@@ -138,7 +130,6 @@ async function updateFilterXml(packageFolderPath, folderName) {
         `root="/content/dam/${folderName}"`
     );
     
-    // Write the updated content back
     await writeFile(filterXmlPath, filterContent, 'utf-8');
     
     return packageFolderPath;
@@ -147,7 +138,6 @@ async function updateFilterXml(packageFolderPath, folderName) {
 async function updatePropertiesXml(packageFolderPath, folderName) {
     const propertiesXmlPath = path.join(packageFolderPath, 'META-INF', 'vault', 'properties.xml');
     
-    // Read the properties.xml file
     let propertiesContent = await readFile(propertiesXmlPath, 'utf-8');
     
     // Update name entry: <entry key="name">my-site-assets</entry> -> <entry key="name">{folderName}</entry>
@@ -156,7 +146,6 @@ async function updatePropertiesXml(packageFolderPath, folderName) {
         `<entry key="name">${folderName}</entry>`
     );
     
-    // Write the updated content back
     await writeFile(propertiesXmlPath, propertiesContent, 'utf-8');
     
     return packageFolderPath;
@@ -166,7 +155,6 @@ async function updateDefinitionXml(packageFolderPath, folderName) {
     const definitionXmlPath = path.join(packageFolderPath, 'META-INF', 'vault', 'definition', '.content.xml');
     const lastModified = new Date().toISOString();
     
-    // Read the definition/.content.xml file
     let definitionContent = await readFile(definitionXmlPath, 'utf-8');
     
     // Update jcr:lastModified (line 6)
@@ -187,7 +175,6 @@ async function updateDefinitionXml(packageFolderPath, folderName) {
         `root="/content/dam/${folderName}"`
     );
     
-    // Write the updated content back
     await writeFile(definitionXmlPath, definitionContent, 'utf-8');
     
     return packageFolderPath;
@@ -224,7 +211,6 @@ async function createAssetFoldersForImages(packageFolderPath, folderName) {
     const damFolder = path.join(packageFolderPath, 'jcr_root', 'content', 'dam', folderName);
     const assetTemplatePath = path.join(damFolder, 'asset.jpg');
     
-    // Read all image files from import-work/images
     const imageFiles = await readdir(imagesSource);
     
     // For each image, copy the asset.jpg folder and rename it
@@ -251,7 +237,6 @@ async function createAssetFoldersForImages(packageFolderPath, folderName) {
         await updateAssetMetadata(newAssetFolderPath, imageFile, imageSourcePath);
     }
     
-    // Remove the template asset.jpg folder
     await rm(assetTemplatePath, { recursive: true, force: true });
     
     return packageFolderPath;
@@ -263,7 +248,7 @@ async function main() {
     const folderName = args[0];
     
     if (!folderName) {
-        console.error('❌ Error: Please provide a folder name');
+        console.error('Error: Please provide a folder name');
         process.exit(1);
     }
     
@@ -280,7 +265,7 @@ async function main() {
         await createZipPackage(packageFolderPath, folderName);
         
     } catch (error) {
-        console.error(`❌ Failed to create package: ${error.message}`);
+        console.error(`Failed to create package: ${error.message}`);
         process.exit(1);
     }
 }

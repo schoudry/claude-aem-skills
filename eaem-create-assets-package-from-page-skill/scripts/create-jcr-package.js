@@ -1,10 +1,31 @@
-import { mkdir, access, cp, rename, readdir } from 'fs/promises';
+import { mkdir, access, cp, rename, readdir, readFile, writeFile } from 'fs/promises';
 import { constants } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+function getMimeType(filename) {
+    const ext = path.extname(filename).toLowerCase();
+    const mimeTypes = {
+        '.jpg': 'image/jpeg',
+        '.jpeg': 'image/jpeg',
+        '.png': 'image/png',
+        '.gif': 'image/gif',
+        '.webp': 'image/webp',
+        '.svg': 'image/svg+xml'
+    };
+    return mimeTypes[ext] || 'application/octet-stream';
+}
+
+async function updateOriginalMimeType(renditionsFolder, imageFile) {
+    const contentXmlPath = path.join(renditionsFolder, 'original.dir', '.content.xml');
+    const mimeType = getMimeType(imageFile);
+    let xmlContent = await readFile(contentXmlPath, 'utf8');
+    xmlContent = xmlContent.replace(/jcr:mimeType="[^"]*"/, `jcr:mimeType="${mimeType}"`);
+    await writeFile(contentXmlPath, xmlContent, 'utf8');
+}
 
 async function createPackageTempFolder(folderName) {
     const importWorkFolder = path.join(__dirname, '..', '..', '..', 'import-work');
@@ -63,6 +84,9 @@ async function createAssetFoldersForImages(packageFolderPath, folderName) {
         const imageDestPath = path.join(renditionsFolder, 'original');
         
         await cp(imageSourcePath, imageDestPath);
+        
+        // Update the jcr:mimeType in original.dir/.content.xml
+        await updateOriginalMimeType(renditionsFolder, imageFile);
     }
     
     return packageFolderPath;

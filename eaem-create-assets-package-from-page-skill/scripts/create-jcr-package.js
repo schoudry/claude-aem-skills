@@ -1,4 +1,5 @@
-import { mkdir, access, cp, rename, readdir, readFile, writeFile, rm } from 'fs/promises';
+import { mkdir, access, cp, rename, readdir, readFile, writeFile, rm, stat } from 'fs/promises';
+import { randomUUID } from 'crypto';
 import { constants } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -25,6 +26,30 @@ async function updateOriginalMimeType(renditionsFolder, imageFile) {
     let xmlContent = await readFile(contentXmlPath, 'utf8');
     xmlContent = xmlContent.replace(/jcr:mimeType="[^"]*"/, `jcr:mimeType="${mimeType}"`);
     await writeFile(contentXmlPath, xmlContent, 'utf8');
+}
+
+async function updateAssetMetadata(assetFolderPath, imageFile, imageSourcePath) {
+    const contentXmlPath = path.join(assetFolderPath, '.content.xml');
+    const mimeType = getMimeType(imageFile);
+    const fileExt = path.extname(imageFile).toLowerCase().substring(1); // Remove the dot
+    const fileStat = await stat(imageSourcePath);
+    const fileSize = fileStat.size;
+    const lastModified = new Date().toISOString();
+    const newUuid = randomUUID();
+    
+    // Read the .content.xml file
+    let xmlContent = await readFile(contentXmlPath, 'utf-8');
+    
+    // Update all metadata fields
+    xmlContent = xmlContent.replace(/jcr:uuid="[^"]*"/, `jcr:uuid="${newUuid}"`);
+    xmlContent = xmlContent.replace(/jcr:lastModified="{Date}[^"]*"/, `jcr:lastModified="{Date}${lastModified}"`);
+    xmlContent = xmlContent.replace(/dam:Fileformat="[^"]*"/, `dam:Fileformat="${fileExt.toUpperCase()}"`);
+    xmlContent = xmlContent.replace(/dam:MIMEtype="[^"]*"/, `dam:MIMEtype="${mimeType}"`);
+    xmlContent = xmlContent.replace(/dam:size="{Long}[^"]*"/, `dam:size="{Long}${fileSize}"`);
+    xmlContent = xmlContent.replace(/dc:format="[^"]*"/, `dc:format="${mimeType}"`);
+    
+    // Write the updated content back
+    await writeFile(contentXmlPath, xmlContent, 'utf-8');
 }
 
 async function createPackageTempFolder(folderName) {
@@ -102,6 +127,9 @@ async function createAssetFoldersForImages(packageFolderPath, folderName) {
         
         // Update the jcr:mimeType in original.dir/.content.xml
         await updateOriginalMimeType(renditionsFolder, imageFile);
+        
+        // Update asset metadata in the main .content.xml
+        await updateAssetMetadata(newAssetFolderPath, imageFile, imageSourcePath);
     }
     
     // Remove the template asset.jpg folder

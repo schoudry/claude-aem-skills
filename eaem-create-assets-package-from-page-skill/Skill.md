@@ -27,27 +27,26 @@ Before using this skill, ensureensure:
 
 ---
 
-### Step 2: Confirm JCR Package is created only with .jpg Images
+### Step 2: Confirm JCR Package is created only with Images
 
-**Before proceeding, confirm with the user only jpg images are copied:**
+**Before proceeding, confirm with the user images are copied:**
 
-"This skill only creates a package with .jpg images, proceed?"
-
-"If user says no, stop the package creation"
+"This skill only creates a package with images, proceed?"
 
 ### Step 3: Ask for the JCR package name
 
-**Ask user for the JCR package name, give default as my-site:**
+**Ask user for the JCR package name, give default as my-site-assets:**
 
-"What would you like the package name to be? eg. my-site"
+"What would you like the package name to be? eg. my-site-assets"
 
-### Step 4: Copy the .jpg Images
+### Step 4: Run the copy images and package creation script
 
-1. Copy the structure `my-site-assets` from `resources` to a **Output directory** folder eg. `./import-work/my-site-assets`
+**Command:**
+```bash
+node .skills/eaem-create-assets-package-from-page-skill/scripts/create-jcr-package.js "my-site-assets"
+```
 
-2. Create a folder with image name **Output directory/my-site-assets** eg. `import-work/my-site-assets\jcr_root\content\dam\my-site` 
-
-### Step 5: Zip the folder **Output directory/my-site-assets** eg. `import-work/my-site-assets`
+### Step 5: Verify package created as .zip
 
 **Success criteria:**
-- ✅ package created with provided name
+- ✅ package created as zip with images

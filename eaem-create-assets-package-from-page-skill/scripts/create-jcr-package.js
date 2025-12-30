@@ -1,8 +1,10 @@
 import { mkdir, access, cp, rename, readdir, readFile, writeFile, rm, stat } from 'fs/promises';
+import { createWriteStream } from 'fs';
 import { randomUUID } from 'crypto';
 import { constants } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import archiver from 'archiver';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -191,6 +193,32 @@ async function updateDefinitionXml(packageFolderPath, folderName) {
     return packageFolderPath;
 }
 
+async function createZipPackage(packageFolderPath, folderName) {
+    const importWorkFolder = path.join(__dirname, '..', '..', '..', 'import-work');
+    const zipFilePath = path.join(importWorkFolder, `${folderName}.zip`);
+    
+    return new Promise((resolve, reject) => {
+        const output = createWriteStream(zipFilePath);
+        const archive = archiver('zip', {
+            zlib: { level: 9 } // Maximum compression
+        });
+        
+        output.on('close', () => {
+            console.log(`✅ Package created: ${zipFilePath}`);
+            console.log(`📦 Total size: ${(archive.pointer() / 1024 / 1024).toFixed(2)} MB`);
+            resolve(zipFilePath);
+        });
+        
+        archive.on('error', (err) => {
+            reject(err);
+        });
+        
+        archive.pipe(output);
+        archive.directory(packageFolderPath, false);
+        archive.finalize();
+    });
+}
+
 async function createAssetFoldersForImages(packageFolderPath, folderName) {
     const imagesSource = path.join(__dirname, '..', '..', '..', 'import-work', 'images');
     const damFolder = path.join(packageFolderPath, 'jcr_root', 'content', 'dam', folderName);
@@ -249,9 +277,10 @@ async function main() {
         await updatePropertiesXml(packageFolderPath, folderName);
         await updateDefinitionXml(packageFolderPath, folderName);
         await createAssetFoldersForImages(packageFolderPath, folderName);
+        await createZipPackage(packageFolderPath, folderName);
         
     } catch (error) {
-        console.error(`❌ Failed to create package folder: ${error.message}`);
+        console.error(`❌ Failed to create package: ${error.message}`);
         process.exit(1);
     }
 }

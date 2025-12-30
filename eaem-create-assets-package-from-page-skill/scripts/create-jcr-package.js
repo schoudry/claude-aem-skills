@@ -1,4 +1,4 @@
-import { mkdir, access, cp, rename } from 'fs/promises';
+import { mkdir, access, cp, rename, readdir } from 'fs/promises';
 import { constants } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -7,13 +7,16 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 async function createPackageTempFolder(folderName) {
+    const importWorkFolder = path.join(__dirname, '..', '..', '..', 'import-work');
+    const packageFolder = path.join(importWorkFolder, folderName);
+    
     try {
-        await access(folderName, constants.F_OK);
+        await access(packageFolder, constants.F_OK);
     } catch (error) {
-        await mkdir(folderName, { recursive: true });
+        await mkdir(packageFolder, { recursive: true });
     }
     
-    return folderName;
+    return packageFolder;
 }
 
 async function copyTemplateFiles(destinationFolder) {
@@ -27,13 +30,42 @@ async function copyTemplateFiles(destinationFolder) {
     return destinationFolder;
 }
 
-async function renameDamFolder(packageFolderName) {
-    const oldPath = path.join(packageFolderName, 'jcr_root', 'content', 'dam', 'my-site');
-    const newPath = path.join(packageFolderName, 'jcr_root', 'content', 'dam', packageFolderName);
+async function renameDamFolder(packageFolderPath, folderName) {
+    const oldPath = path.join(packageFolderPath, 'jcr_root', 'content', 'dam', 'my-site');
+    const newPath = path.join(packageFolderPath, 'jcr_root', 'content', 'dam', folderName);
     
     await rename(oldPath, newPath);
     
-    return packageFolderName;
+    return packageFolderPath;
+}
+
+async function createAssetFoldersForImages(packageFolderPath, folderName) {
+    const imagesSource = path.join(__dirname, '..', '..', '..', 'import-work', 'images');
+    const damFolder = path.join(packageFolderPath, 'jcr_root', 'content', 'dam', folderName);
+    const assetTemplatePath = path.join(damFolder, 'asset.jpg');
+    
+    // Read all image files from import-work/images
+    const imageFiles = await readdir(imagesSource);
+    
+    // For each image, copy the asset.jpg folder and rename it
+    for (const imageFile of imageFiles) {
+        const newAssetFolderPath = path.join(damFolder, imageFile);
+        
+        // Copy asset.jpg folder to new image name folder
+        await cp(assetTemplatePath, newAssetFolderPath, {
+            recursive: true,
+            force: true
+        });
+        
+        // Copy the actual image binary to renditions folder as "original"
+        const imageSourcePath = path.join(imagesSource, imageFile);
+        const renditionsFolder = path.join(newAssetFolderPath, '_jcr_content', 'renditions');
+        const imageDestPath = path.join(renditionsFolder, 'original');
+        
+        await cp(imageSourcePath, imageDestPath);
+    }
+    
+    return packageFolderPath;
 }
 
 async function main() {
@@ -47,9 +79,10 @@ async function main() {
     }
     
     try {
-        const packageFolderName = await createPackageTempFolder(folderName);
-        await copyTemplateFiles(packageFolderName);
-        await renameDamFolder(packageFolderName);
+        const packageFolderPath = await createPackageTempFolder(folderName);
+        await copyTemplateFiles(packageFolderPath);
+        await renameDamFolder(packageFolderPath, folderName);
+        await createAssetFoldersForImages(packageFolderPath, folderName);
         
     } catch (error) {
         console.error(`❌ Failed to create package folder: ${error.message}`);

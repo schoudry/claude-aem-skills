@@ -100,6 +100,97 @@ async function updateDamFolderTitle(packageFolderPath, folderName) {
     return packageFolderPath;
 }
 
+async function updateManifest(packageFolderPath, folderName) {
+    const manifestPath = path.join(packageFolderPath, 'META-INF', 'MANIFEST.MF');
+    
+    // Read the MANIFEST.MF file
+    let manifestContent = await readFile(manifestPath, 'utf-8');
+    
+    // Update Content-Package-Id: my_packages:my-site-assets -> my_packages:{folderName}
+    manifestContent = manifestContent.replace(
+        /Content-Package-Id: my_packages:my-site-assets/,
+        `Content-Package-Id: my_packages:${folderName}`
+    );
+    
+    // Update Content-Package-Roots: /content/dam/my-site -> /content/dam/{folderName}
+    manifestContent = manifestContent.replace(
+        /Content-Package-Roots: \/content\/dam\/my-site/,
+        `Content-Package-Roots: /content/dam/${folderName}`
+    );
+    
+    // Write the updated content back
+    await writeFile(manifestPath, manifestContent, 'utf-8');
+    
+    return packageFolderPath;
+}
+
+async function updateFilterXml(packageFolderPath, folderName) {
+    const filterXmlPath = path.join(packageFolderPath, 'META-INF', 'vault', 'filter.xml');
+    
+    // Read the filter.xml file
+    let filterContent = await readFile(filterXmlPath, 'utf-8');
+    
+    // Update filter root: /content/dam/my-site -> /content/dam/{folderName}
+    filterContent = filterContent.replace(
+        /root="\/content\/dam\/my-site"/,
+        `root="/content/dam/${folderName}"`
+    );
+    
+    // Write the updated content back
+    await writeFile(filterXmlPath, filterContent, 'utf-8');
+    
+    return packageFolderPath;
+}
+
+async function updatePropertiesXml(packageFolderPath, folderName) {
+    const propertiesXmlPath = path.join(packageFolderPath, 'META-INF', 'vault', 'properties.xml');
+    
+    // Read the properties.xml file
+    let propertiesContent = await readFile(propertiesXmlPath, 'utf-8');
+    
+    // Update name entry: <entry key="name">my-site-assets</entry> -> <entry key="name">{folderName}</entry>
+    propertiesContent = propertiesContent.replace(
+        /<entry key="name">my-site-assets<\/entry>/,
+        `<entry key="name">${folderName}</entry>`
+    );
+    
+    // Write the updated content back
+    await writeFile(propertiesXmlPath, propertiesContent, 'utf-8');
+    
+    return packageFolderPath;
+}
+
+async function updateDefinitionXml(packageFolderPath, folderName) {
+    const definitionXmlPath = path.join(packageFolderPath, 'META-INF', 'vault', 'definition', '.content.xml');
+    const lastModified = new Date().toISOString();
+    
+    // Read the definition/.content.xml file
+    let definitionContent = await readFile(definitionXmlPath, 'utf-8');
+    
+    // Update jcr:lastModified (line 6)
+    definitionContent = definitionContent.replace(
+        /jcr:lastModified="{Date}[^"]*"/,
+        `jcr:lastModified="{Date}${lastModified}"`
+    );
+    
+    // Update name (line 16)
+    definitionContent = definitionContent.replace(
+        /name="my-site-assets"/,
+        `name="${folderName}"`
+    );
+    
+    // Update root (line 23)
+    definitionContent = definitionContent.replace(
+        /root="\/content\/dam\/my-site"/,
+        `root="/content/dam/${folderName}"`
+    );
+    
+    // Write the updated content back
+    await writeFile(definitionXmlPath, definitionContent, 'utf-8');
+    
+    return packageFolderPath;
+}
+
 async function createAssetFoldersForImages(packageFolderPath, folderName) {
     const imagesSource = path.join(__dirname, '..', '..', '..', 'import-work', 'images');
     const damFolder = path.join(packageFolderPath, 'jcr_root', 'content', 'dam', folderName);
@@ -153,6 +244,10 @@ async function main() {
         await copyTemplateFiles(packageFolderPath);
         await renameDamFolder(packageFolderPath, folderName);
         await updateDamFolderTitle(packageFolderPath, folderName);
+        await updateManifest(packageFolderPath, folderName);
+        await updateFilterXml(packageFolderPath, folderName);
+        await updatePropertiesXml(packageFolderPath, folderName);
+        await updateDefinitionXml(packageFolderPath, folderName);
         await createAssetFoldersForImages(packageFolderPath, folderName);
         
     } catch (error) {

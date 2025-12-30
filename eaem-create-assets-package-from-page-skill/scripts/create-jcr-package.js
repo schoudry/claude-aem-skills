@@ -1,4 +1,4 @@
-import { mkdir, access, cp, rename, readdir, readFile, writeFile } from 'fs/promises';
+import { mkdir, access, cp, rename, readdir, readFile, writeFile, rm } from 'fs/promises';
 import { constants } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -60,6 +60,21 @@ async function renameDamFolder(packageFolderPath, folderName) {
     return packageFolderPath;
 }
 
+async function updateDamFolderTitle(packageFolderPath, folderName) {
+    const contentXmlPath = path.join(packageFolderPath, 'jcr_root', 'content', 'dam', folderName, '.content.xml');
+    
+    // Read the .content.xml file
+    let xmlContent = await readFile(contentXmlPath, 'utf-8');
+    
+    // Replace jcr:title="My Site" with jcr:title="{folderName}"
+    xmlContent = xmlContent.replace(/jcr:title="My Site"/, `jcr:title="${folderName}"`);
+    
+    // Write the updated content back
+    await writeFile(contentXmlPath, xmlContent, 'utf-8');
+    
+    return packageFolderPath;
+}
+
 async function createAssetFoldersForImages(packageFolderPath, folderName) {
     const imagesSource = path.join(__dirname, '..', '..', '..', 'import-work', 'images');
     const damFolder = path.join(packageFolderPath, 'jcr_root', 'content', 'dam', folderName);
@@ -89,6 +104,9 @@ async function createAssetFoldersForImages(packageFolderPath, folderName) {
         await updateOriginalMimeType(renditionsFolder, imageFile);
     }
     
+    // Remove the template asset.jpg folder
+    await rm(assetTemplatePath, { recursive: true, force: true });
+    
     return packageFolderPath;
 }
 
@@ -106,6 +124,7 @@ async function main() {
         const packageFolderPath = await createPackageTempFolder(folderName);
         await copyTemplateFiles(packageFolderPath);
         await renameDamFolder(packageFolderPath, folderName);
+        await updateDamFolderTitle(packageFolderPath, folderName);
         await createAssetFoldersForImages(packageFolderPath, folderName);
         
     } catch (error) {

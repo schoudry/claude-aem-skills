@@ -1,0 +1,5 @@
+Manifest-Version: 1.0
+Content-Package-Id: my_packages:my-site-assets
+Content-Package-Roots: /content/dam/my-site
+Content-Package-Type: content
+

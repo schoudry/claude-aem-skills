@@ -124,9 +124,9 @@ Use `WebFetch` to GET `<source page>` HTML. Parse with the AEM DOM inspection ch
    - If neither method resolves an asset (CSV has no row, or the live resolver echoes the path back unchanged), do not guess or invent a `delivery-` URL — leave the original URL in place and flag it explicitly in the Step 7 report.
 8. **`titleType` and the `-size` class must each be read independently from the source — they do NOT always match.** `titleType` comes from the actual `<h1>`–`<h6>` tag wrapping the source heading (semantic level). The `-size` class comes from the size token already present on the source's `custom-title` block wrapper (visual size) — e.g. `<div class="custom-title h5-size block" ...><h2 class="custom-title-heading">...</h2></div>` must become `titleType="h2"` **with** `h5-size` in `classes_customDynamicClass`, NOT `h2-size`, because the source author chose to render an `<h2>` at `h5` visual size. Only default to the tag-matching size (`h3`→`h3-size`, etc.) when the source has no explicit `-size` class of its own to copy. Never override an explicit source `-size` class with one derived from the heading tag — extract both independently and copy each verbatim. Any additional weight/style classes already found on the source (e.g. `medium-weight`) are appended alongside the `-size` class, not instead of it.
 9. **Nested `<span>` style classes must all be carried into `classes_customDynamicClass`, not just the innermost one.** Source text styling is sometimes split across nested wrapper spans, e.g. `<span class="light-font"><span class="body-unica-32-reg">...</span></span>`. Collect every class from the outer span(s) down to the innermost one and combine them all — comma-separated — on the migrated block's `classes_customDynamicClass` (e.g. `classes_customDynamicClass="body-unica-32-reg,light-font"`). Do not drop the outer wrapper's class just because the innermost span is the one carrying the "primary" font-size/style token.
-10. **Extract the `<title>` tag from the source page `<head>`** and use it to set both `jcr:title` and `pageTitle` on `jcr:content`:
-    - `jcr:title` ← the full `<title>` text verbatim, including any site-name suffix (e.g. `<title>Our Principles | AbbVie</title>` → `jcr:title="Our Principles | AbbVie"`).
-    - `pageTitle` ← the same text with the trailing `" | AbbVie"` (or equivalent site-name suffix, e.g. `" | AbbVie India"`) stripped (e.g. `pageTitle="Our Principles"`). If the source `<title>` has no such suffix, `pageTitle` equals `jcr:title` verbatim.
+10. **Extract the `<title>` tag from the source page `<head>`** and use it to set both `jcr:title` and `pageTitle` on `jcr:content` — **they must be identical**:
+    - Take the full `<title>` text and strip the trailing `" | AbbVie"` (or equivalent site-name suffix, e.g. `" | AbbVie India"`) — e.g. `<title>Our Principles | AbbVie</title>` → stripped value `"Our Principles"`.
+    - Set **both** `jcr:title="Our Principles"` **and** `pageTitle="Our Principles"` to this same stripped value. Do not keep the `| AbbVie` suffix on `jcr:title` — the suffix is re-appended automatically by block rendering logic at display time, so baking it into either stored attribute produces a doubled `"... | AbbVie | AbbVie"` on the rendered page. If the source `<title>` has no such suffix to begin with, both fields simply equal the full `<title>` text verbatim.
     - Never fall back to the visible `<h1>`/`cmp-title` text for these two fields — always source them from the `<title>` tag, even if it differs slightly from the on-page heading.
 
 ---
@@ -197,10 +197,10 @@ Before mapping any component, confirm the block exists locally:
           jcr:primaryType="cq:Page">
   <jcr:content
       jcr:primaryType="cq:PageContent"
-      jcr:title="<source page's <title> tag, verbatim>"
+      jcr:title="<source page's <title> tag, with the site-name suffix stripped, per Step 2.10>"
       sling:resourceType="<same as template>"
       ...remaining attrs from template...
-      pageTitle="<source <title> tag with the site-name suffix stripped, per Step 2.10>">
+      pageTitle="<same stripped value as jcr:title, per Step 2.10>">
     <root jcr:primaryType="nt:unstructured"
           sling:resourceType="core/franklin/components/root/v1/root">
 ```
